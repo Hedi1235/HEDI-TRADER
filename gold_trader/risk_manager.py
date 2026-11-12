@@ -35,7 +35,7 @@ class RiskResult(StrictModel):
 
 
 class RiskManager:
-    """Rejects unsafe proposals and sizes approved paper trades at or below 1%."""
+    """Rejects unsafe proposals and sizes orders at or below 1% account risk."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -47,13 +47,17 @@ class RiskManager:
         equity: float,
         daily_start_equity: float,
         open_positions: int,
+        contract_size_ounces: float | None = None,
+        minimum_lot: float | None = None,
+        lot_step: float | None = None,
+        maximum_lots: float | None = None,
     ) -> RiskResult:
         if decision.decision == "HOLD":
             return self._reject("Supervisor decision is HOLD")
         if decision.confidence < self.settings.minimum_decision_confidence:
             return self._reject("Decision confidence is below the configured minimum")
         if open_positions >= self.settings.max_open_positions:
-            return self._reject("Maximum open paper positions already reached")
+            return self._reject("Maximum open positions already reached")
         if equity <= 0 or daily_start_equity <= 0:
             return self._reject("Account equity must be positive")
 
@@ -81,15 +85,27 @@ class RiskManager:
 
         stop_distance = abs(entry - stop)
         risk_budget = equity * self.settings.max_risk_per_trade_pct
-        risk_per_lot = stop_distance * self.settings.contract_size_ounces
+        contract_size = contract_size_ounces or self.settings.contract_size_ounces
+        effective_minimum_lot = minimum_lot or self.settings.minimum_lot
+        effective_lot_step = lot_step or self.settings.lot_step
+        configured_maximum = self.settings.maximum_lots
+        effective_maximum_lots = min(
+            configured_maximum,
+            maximum_lots if maximum_lots is not None else configured_maximum,
+        )
+        if contract_size <= 0 or effective_lot_step <= 0 or effective_minimum_lot <= 0:
+            return self._reject("Broker volume and contract specifications are invalid")
+        if effective_maximum_lots < effective_minimum_lot:
+            return self._reject("Broker maximum volume is below its minimum volume")
+        risk_per_lot = stop_distance * contract_size
         if stop_distance <= 0 or risk_per_lot <= 0:
             return self._reject("Stop-loss distance must be positive")
 
-        raw_lots = min(risk_budget / risk_per_lot, self.settings.maximum_lots)
-        step = Decimal(str(self.settings.lot_step))
+        raw_lots = min(risk_budget / risk_per_lot, effective_maximum_lots)
+        step = Decimal(str(effective_lot_step))
         lots = (Decimal(str(raw_lots)) / step).to_integral_value(rounding=ROUND_DOWN) * step
         lot_value = float(lots)
-        if lot_value < self.settings.minimum_lot:
+        if lot_value < effective_minimum_lot:
             return self._reject("Risk budget is too small for the minimum lot size")
 
         actual_risk = lot_value * risk_per_lot
@@ -108,7 +124,7 @@ class RiskManager:
         )
         return RiskResult(
             approved=True,
-            reason="Passed deterministic paper-trade risk checks",
+            reason="Passed deterministic risk checks",
             daily_drawdown_pct=drawdown,
             risk_amount=actual_risk,
             trade=trade,

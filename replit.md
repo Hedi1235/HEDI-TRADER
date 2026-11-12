@@ -6,9 +6,10 @@ A Python research and simulation system that analyzes gold-market inputs, applie
 
 - `uv run python -m gold_trader.main --once` — run one XAU/USD analysis cycle
 - `uv run python -m gold_trader.main` — repeat paper-trading cycles every 15 minutes
+- `uv sync --extra mt5` then `uv run --extra mt5 python -m gold_trader.main_mt5` — local Windows MT5 demo companion; never run this on Replit/Linux
 - `uv run python -m unittest discover -s tests -v` — run Python unit tests
 - Add `FRED_API_KEY` through Replit Secrets to enable macro data; without it, the system records HOLD
-- Execution is simulation-only. Do not add live broker order submission to this system.
+- The Replit runner is paper-only. The separate Windows runner hard-rejects any MT5 account that is not confirmed DEMO.
 
 ## Run & Operate
 
@@ -30,15 +31,15 @@ A Python research and simulation system that analyzes gold-market inputs, applie
 
 ## Where things live
 
-- `gold_trader/` — Python market-data, analysis, deterministic risk, and SQLite paper execution
-- `gold_trader/README.md` — paper-only setup, data feeds, and risk behavior
+- `gold_trader/` — Python market-data, analysis, deterministic risk, paper execution, and Windows MT5 demo bridge
+- `gold_trader/README.md` — local setup, paper and demo runner modes, and risk behavior
 - `.env.example` — local configuration template; never commit `.env`
 - `tests/` — Python unit tests for schemas, risk limits, paper ledger, and fail-closed behavior
 - Existing `artifacts/`, `lib/`, and `scripts/` remain the TypeScript workspace
 
 ## Architecture decisions
 
-- Trading execution is paper-only; no broker SDK or live-order path is included.
+- The Replit workflow remains paper-only; MT5 order submission exists only in a separate Windows runner that enforces demo mode.
 - Missing, stale, or invalid market/macro data must produce HOLD, never synthetic input.
 - Geopolitical analysis only uses headlines explicitly supplied in the local JSON input.
 

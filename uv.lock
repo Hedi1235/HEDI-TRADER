@@ -477,6 +477,21 @@ wheels = [
 ]
 
 [[package]]
+name = "metatrader5"
+version = "5.0.6231"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c5/46/2d85a3ea15a93123e6b4c49ff600e59c0bb9d0c3fc84462091595b76d8ff/metatrader5-5.0.6231-cp311-cp311-win_amd64.whl", hash = "sha256:1e0fb5e43437f426be3e5aef614f6798a918377db4cdb380593a66d1908f918d", size = 48022, upload-time = "2026-09-27T12:22:33.889Z" },
+    { url = "https://files.pythonhosted.org/packages/90/ed/525a69afbc050f5b19342a6ddada4f086e2aa9ef63b987bef5d723f29586/metatrader5-5.0.6231-cp312-cp312-win_amd64.whl", hash = "sha256:b94b1f8f52087ae36dfac5f352a96f5d04fe308704d9515f82cf5d1470bc31d4", size = 47968, upload-time = "2026-09-27T12:22:35.219Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/f2/c310381487da4ea67ee6e71bd8244857fe9c276ea37db0c70b5fb280fe4a/metatrader5-5.0.6231-cp313-cp313-win_amd64.whl", hash = "sha256:3a8c8349ce691a4ef05e314afc034ad82f4dbb19415efc7442af5ea075d5e797", size = 47964, upload-time = "2026-09-27T12:22:36.136Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/7e/5f1ca5f564c7d7552c9706c976de05b594b61d82ae09a189c69662230fbc/metatrader5-5.0.6231-cp314-cp314-win_amd64.whl", hash = "sha256:9a63f026072479298be0d0cbc1a878d4f659aff2e18280a4128843dbb425841b", size = 49531, upload-time = "2026-09-27T12:22:37.03Z" },
+]
+
+[[package]]
 name = "numpy"
 version = "2.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -1198,13 +1213,20 @@ dependencies = [
     { name = "yfinance" },
 ]
 
+[package.optional-dependencies]
+mt5 = [
+    { name = "metatrader5", marker = "sys_platform == 'win32'" },
+]
+
 [package.metadata]
 requires-dist = [
+    { name = "metatrader5", marker = "sys_platform == 'win32' and extra == 'mt5'", specifier = ">=5.0.6231" },
     { name = "pydantic", specifier = ">=2.14.3" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "requests", specifier = ">=2.34.2" },
     { name = "yfinance", specifier = ">=1.8.0" },
 ]
+provides-extras = ["mt5"]
 
 [[package]]
 name = "yfinance"

@@ -1,4 +1,4 @@
-"""Environment-backed configuration for the paper-trading system."""
+"""Environment-backed settings shared by the paper and local MT5 demo runners."""
 
 from __future__ import annotations
 
@@ -32,9 +32,16 @@ def _int_env(name: str, default: int) -> int:
         raise ValueError(f"{name} must be an integer") from exc
 
 
+def _optional_int_env(name: str) -> int | None:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return None
+    return _int_env(name, 0)
+
+
 @dataclass(frozen=True)
 class Settings:
-    """Validated settings. Live broker configuration is intentionally absent."""
+    """Validated settings. MT5 credentials are used only by the Windows demo runner."""
 
     fred_api_key: str | None = None
     yahoo_ticker: str = "GC=F"
@@ -59,6 +66,15 @@ class Settings:
     max_open_positions: int = 1
     database_path: Path = Path("trading_bot.db")
     headlines_path: Path = Path("news/headlines.json")
+    mt5_login: int | None = None
+    mt5_password: str | None = None
+    mt5_server: str | None = None
+    mt5_terminal_path: Path | None = None
+    trading_symbol: str = "XAUUSD"
+    mt5_deviation_points: int = 20
+    minimum_margin_level_pct: float = 200.0
+    maximum_free_margin_usage_pct: float = 0.80
+    mt5_database_path: Path = Path("mt5_demo_trades.db")
 
     def __post_init__(self) -> None:
         if not 0 < self.max_risk_per_trade_pct <= 0.01:
@@ -83,6 +99,27 @@ class Settings:
             raise ValueError("MINIMUM_SIGNAL_STRENGTH must be between 0 and 1")
         if self.max_open_positions < 1:
             raise ValueError("MAX_OPEN_POSITIONS must be at least 1")
+        if self.mt5_deviation_points <= 0:
+            raise ValueError("MT5_DEVIATION_POINTS must be positive")
+        if self.minimum_margin_level_pct < 0:
+            raise ValueError("MINIMUM_MARGIN_LEVEL_PCT cannot be negative")
+        if not 0 < self.maximum_free_margin_usage_pct <= 1:
+            raise ValueError("MAXIMUM_FREE_MARGIN_USAGE_PCT must be in the interval (0, 1]")
+        supplied_mt5_credentials = (
+            self.mt5_login is not None,
+            bool(self.mt5_password),
+            bool(self.mt5_server),
+        )
+        if any(supplied_mt5_credentials) and not all(supplied_mt5_credentials):
+            raise ValueError("MT5_LOGIN, MT5_PASSWORD, and MT5_SERVER must be supplied together")
+        if self.mt5_login is not None and self.mt5_login <= 0:
+            raise ValueError("MT5_LOGIN must be a positive account number")
+        if not self.trading_symbol.strip():
+            raise ValueError("TRADING_SYMBOL cannot be empty")
+
+    @property
+    def mt5_credentials_configured(self) -> bool:
+        return self.mt5_login is not None and bool(self.mt5_password) and bool(self.mt5_server)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -112,4 +149,17 @@ class Settings:
             max_open_positions=_int_env("MAX_OPEN_POSITIONS", 1),
             database_path=Path(os.getenv("DATABASE_PATH", "trading_bot.db")),
             headlines_path=Path(os.getenv("HEADLINES_PATH", "news/headlines.json")),
+            mt5_login=_optional_int_env("MT5_LOGIN"),
+            mt5_password=os.getenv("MT5_PASSWORD") or None,
+            mt5_server=os.getenv("MT5_SERVER") or None,
+            mt5_terminal_path=(
+                Path(os.environ["MT5_TERMINAL_PATH"])
+                if os.getenv("MT5_TERMINAL_PATH")
+                else None
+            ),
+            trading_symbol=os.getenv("TRADING_SYMBOL", "XAUUSD"),
+            mt5_deviation_points=_int_env("MT5_DEVIATION_POINTS", 20),
+            minimum_margin_level_pct=_float_env("MINIMUM_MARGIN_LEVEL_PCT", 200.0),
+            maximum_free_margin_usage_pct=_float_env("MAXIMUM_FREE_MARGIN_USAGE_PCT", 0.80),
+            mt5_database_path=Path(os.getenv("MT5_DATABASE_PATH", "mt5_demo_trades.db")),
         )

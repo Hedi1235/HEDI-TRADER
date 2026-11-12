@@ -192,21 +192,15 @@ def _rsi(close: pd.Series, period: int = 14) -> float:
     return float(100.0 - (100.0 / (1.0 + average_gain / average_loss)))
 
 
-def fetch_market_snapshot(settings: Settings) -> MarketSnapshot:
-    """Fetch 15-minute OHLCV bars and calculate RSI, EMAs, and range levels."""
+def market_snapshot_from_frame(
+    settings: Settings,
+    ticker: str,
+    frame: pd.DataFrame,
+) -> MarketSnapshot:
+    """Build the shared indicators from Yahoo or MT5 OHLC bars."""
 
-    try:
-        frame = yf.Ticker(settings.yahoo_ticker).history(
-            period=settings.market_period,
-            interval=settings.market_interval,
-            auto_adjust=False,
-            actions=False,
-            timeout=20,
-        )
-    except Exception as exc:  # yfinance wraps multiple network/library errors
-        raise DataUnavailable(f"Yahoo Finance request failed ({type(exc).__name__})") from exc
     if frame.empty or not {"Open", "High", "Low", "Close"}.issubset(frame.columns):
-        raise DataUnavailable("Yahoo Finance returned no usable OHLC bars")
+        raise DataUnavailable(f"{ticker} returned no usable OHLC bars")
 
     frame = frame.dropna(subset=["Open", "High", "Low", "Close"])
     required = max(settings.slow_ema_period + 2, settings.support_resistance_lookback)
@@ -244,7 +238,7 @@ def fetch_market_snapshot(settings: Settings) -> MarketSnapshot:
         raise DataUnavailable("Market feed contains non-finite prices")
 
     return MarketSnapshot(
-        ticker=settings.yahoo_ticker,
+        ticker=ticker,
         latest_bar=bar,
         rsi_14=_rsi(close),
         ema_50=float(ema_fast.iloc[-1]),
@@ -255,6 +249,24 @@ def fetch_market_snapshot(settings: Settings) -> MarketSnapshot:
         resistance=resistance,
         candles_available=len(frame),
     )
+
+
+def fetch_market_snapshot(settings: Settings) -> MarketSnapshot:
+    """Fetch Yahoo Finance bars for the paper runner and calculate indicators."""
+
+    try:
+        frame = yf.Ticker(settings.yahoo_ticker).history(
+            period=settings.market_period,
+            interval=settings.market_interval,
+            auto_adjust=False,
+            actions=False,
+            timeout=20,
+        )
+    except Exception as exc:  # yfinance wraps multiple network/library errors
+        raise DataUnavailable(f"Yahoo Finance request failed ({type(exc).__name__})") from exc
+    if frame.empty:
+        raise DataUnavailable("Yahoo Finance returned no usable OHLC bars")
+    return market_snapshot_from_frame(settings, settings.yahoo_ticker, frame)
 
 
 def load_headlines(path: Path) -> list[str]:

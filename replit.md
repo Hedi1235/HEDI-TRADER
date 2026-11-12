@@ -1,6 +1,14 @@
-# [Project name]
+# XAU/USD Paper-Trading Supervisor
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A Python research and simulation system that analyzes gold-market inputs, applies deterministic risk limits, and records paper trades without connecting to a live broker.
+
+## Python paper-trading system
+
+- `uv run python -m gold_trader.main --once` — run one XAU/USD analysis cycle
+- `uv run python -m gold_trader.main` — repeat paper-trading cycles every 15 minutes
+- `uv run python -m unittest discover -s tests -v` — run Python unit tests
+- Add `FRED_API_KEY` through Replit Secrets to enable macro data; without it, the system records HOLD
+- Execution is simulation-only. Do not add live broker order submission to this system.
 
 ## Run & Operate
 
@@ -22,15 +30,21 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `gold_trader/` — Python market-data, analysis, deterministic risk, and SQLite paper execution
+- `gold_trader/README.md` — paper-only setup, data feeds, and risk behavior
+- `.env.example` — local configuration template; never commit `.env`
+- `tests/` — Python unit tests for schemas, risk limits, paper ledger, and fail-closed behavior
+- Existing `artifacts/`, `lib/`, and `scripts/` remain the TypeScript workspace
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Trading execution is paper-only; no broker SDK or live-order path is included.
+- Missing, stale, or invalid market/macro data must produce HOLD, never synthetic input.
+- Geopolitical analysis only uses headlines explicitly supplied in the local JSON input.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The project includes a Python XAU/USD research and paper-trading supervisor with technical and macro inputs, typed agent reports, deterministic risk checks, and a SQLite simulation ledger.
 
 ## User preferences
 

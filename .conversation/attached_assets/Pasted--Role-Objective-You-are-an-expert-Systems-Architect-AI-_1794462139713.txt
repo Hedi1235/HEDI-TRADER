@@ -1,0 +1,57 @@
+# Role & Objective
+You are an expert Systems Architect, AI Engineer, and Quantitative Developer. Build a complete, production-ready, multi-agent autonomous gold trading system for XAU/USD using Python. 
+
+The architecture must follow a **Hierarchical Supervisor Pattern** (inspired by agent design principles in `dair-ai/Prompt-Engineering-Guide`), where specialized worker agents feed structured intelligence reports to a central Head Trader Agent, which passes validated orders through a strict risk-management gate to a broker API.
+
+---
+
+## Complete System Requirements & File Structure
+
+Generate the following file structure and write the full, functional implementation for each file:
+
+### 1. `config.py` (Configuration & Environment)
+- Load API keys and environment variables securely using `python-dotenv`.
+- Set configuration constants:
+  - FRED API Key (for US 10Y yields & CPI)
+  - MetaTrader 5 (MT5) account credentials or demo gateway server info.
+  - Risk limits: Max 1% account risk per trade, max daily drawdown limit (3%), default stop-loss (pips/dollars), and take-profit targets.
+
+### 2. `data_feeds.py` (Data Ingestion Module)
+- **Macro Data:** Fetch US 10-year Treasury yields, real interest rates, and CPI inflation data using the `requests` library targeting the **FRED API**.
+- **Technical & Price Data:** Connect to MetaTrader 5 (`MetaTrader5` package) or `yfinance` to fetch live OHLCV bars and calculate technical indicators:
+  - Relative Strength Index (RSI)
+  - 50-period and 200-period Exponential Moving Angles (EMAs)
+  - Key support and resistance levels.
+
+### 3. `agents.py` (Specialized Agent Definitions)
+Using prompt engineering principles (role constraints, Chain-of-Thought reasoning, and strict schema enforcement), define the agent logic:
+- **Macro & Yield Specialist Agent:** Evaluates DXY and real yields; outputs structured JSON with a bullish/bearish bias and confidence score.
+- **Technical Analyst Agent:** Evaluates RSI, EMAs, and price action; outputs structured JSON with key levels and momentum status.
+- **Geopolitical Risk Agent:** Scans news/sentiment inputs for safe-haven flows; outputs risk levels.
+- **Head Trader Agent (Supervisor):** Receives JSON reports from all three agents, runs a weighted scoring decision matrix, and synthesizes a final directional order decision (BUY, SELL, or HOLD).
+
+### 4. `risk_manager.py` (Deterministic Safeguards)
+- Validate every trade proposal from the Head Trader before execution.
+- Enforce strict rules:
+  - Position sizing formula based on 1% account risk.
+  - Mandatory Stop-Loss (SL) and Take-Profit (TP) attachment.
+  - Hard circuit breaker: Halt all trading if daily account drawdown exceeds 3%.
+
+### 5. `execution.py` (Broker Integration)
+- Connect to the MetaTrader 5 API (`mt5.order_send()`) or an Alpaca paper-trading gateway.
+- Execute approved orders instantly with attached SL/TP parameters and log all transaction states to a local SQLite database (`trading_bot.db`).
+
+### 6. `main.py` (Orchestration Loop & Execution)
+- Build a continuous loop (or scheduled Cron job) that executes every 15 minutes:
+  1. Pulls fresh data via `data_feeds.py`.
+  2. Runs specialist agents to generate reports.
+  3. Invokes the Head Trader to synthesize a decision.
+  4. Passes the decision through `risk_manager.py`.
+  5. Executes via `execution.py` if all checks pass, or logs a HOLD/REJECT state.
+
+---
+
+## Engineering Standards
+- **Strict JSON Parsing:** Ensure all agent outputs use Pydantic models or strict JSON mode to prevent formatting crashes.
+- **Error Handling:** Wrap all API calls (FRED, MT5, LLM inference) in `try/except` blocks with automatic fallbacks to "HOLD" status if rate-limited or offline.
+- **Logging:** Implement clean, colorized terminal logging using Python's built-in `logging` module to track agent thoughts, scores, and trade executions in real-time.

@@ -16,6 +16,13 @@ out-tsc
 
 # dependencies
 node_modules
+.pythonlibs/
+__pycache__/
+*.py[cod]
+.env
+trading_bot.db
+trading_bot.db-shm
+trading_bot.db-wal
 
 # IDEs and editors
 /.idea

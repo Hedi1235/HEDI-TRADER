@@ -295,6 +295,11 @@ class HeadTraderAgent:
             decision = "SELL"
             stop_loss = entry + self.settings.default_stop_loss_usd
             take_profit = entry - self.settings.default_take_profit_usd
+        geopolitical_status = (
+            "unknown input"
+            if geopolitical.risk_level == "unknown"
+            else f"{geopolitical.risk_level}/{geopolitical.bias}"
+        )
         return TradeDecision(
             decision=decision,
             score=score,
@@ -304,7 +309,7 @@ class HeadTraderAgent:
             take_profit=take_profit,
             rationale=(
                 f"Weighted score {score:+.2f} at {confidence:.0%} confidence; "
-                f"macro {macro.bias}, technical {technical.bias}, geopolitical {geopolitical.bias}."
+                f"macro {macro.bias}, technical {technical.bias}, geopolitical {geopolitical_status}."
             ),
             generated_at=datetime.now(UTC),
         )

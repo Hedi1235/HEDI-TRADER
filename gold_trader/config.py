@@ -37,7 +37,7 @@ class Settings:
     """Validated settings. Live broker configuration is intentionally absent."""
 
     fred_api_key: str | None = None
-    yahoo_ticker: str = "XAUUSD=X"
+    yahoo_ticker: str = "GC=F"
     market_period: str = "60d"
     market_interval: str = "15m"
     market_max_age_minutes: int = 45
@@ -73,6 +73,8 @@ class Settings:
             raise ValueError("Lot limits must be positive and maximum lots must cover the minimum lot")
         if self.market_max_age_minutes <= 0 or self.interval_minutes <= 0:
             raise ValueError("Market age and polling interval must be positive")
+        if self.support_resistance_lookback <= 0:
+            raise ValueError("Support/resistance lookback must be positive")
         if self.fast_ema_period <= 0 or self.slow_ema_period <= self.fast_ema_period:
             raise ValueError("EMA periods must be positive and the slow period must exceed the fast period")
         if not 0 <= self.minimum_decision_confidence <= 1:
@@ -88,7 +90,7 @@ class Settings:
 
         return cls(
             fred_api_key=os.getenv("FRED_API_KEY") or None,
-            yahoo_ticker=os.getenv("YAHOO_TICKER", "XAUUSD=X"),
+            yahoo_ticker=os.getenv("YAHOO_TICKER", "GC=F"),
             market_period=os.getenv("MARKET_PERIOD", "60d"),
             market_interval=os.getenv("MARKET_INTERVAL", "15m"),
             market_max_age_minutes=_int_env("MARKET_MAX_AGE_MINUTES", 45),

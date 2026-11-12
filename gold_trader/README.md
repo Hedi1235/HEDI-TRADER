@@ -25,9 +25,12 @@ insufficient history results in a logged HOLD rather than a trade.
 
 ## Data inputs
 
-- Yahoo Finance provides the configured XAU/USD 15-minute OHLC bars (`XAUUSD=X`
-  by default). The system checks candle age and calculates RSI(14), EMA(50/200),
-  normalized EMA slope angles, and recent support/resistance ranges.
+- Yahoo Finance provides 15-minute OHLC bars. `GC=F` (COMEX gold futures) is
+  the default because Yahoo returned no history for its `XAUUSD=X` symbol during
+  verification. Futures are a proxy, not the spot XAU/USD price; change
+  `YAHOO_TICKER` if you have a provider symbol for spot. The system checks
+  candle age and calculates RSI(14), EMA(50/200), normalized EMA slope angles,
+  and recent support/resistance ranges.
 - FRED provides DGS10, DFII10, CPIAUCSL, and DTWEXBGS observations. Add a
   `FRED_API_KEY` through Replit Secrets or a local `.env`; do not commit it.
   DTWEXBGS is a broad trade-weighted dollar proxy, not the ICE DXY index.

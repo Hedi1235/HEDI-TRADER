@@ -1,6 +1,6 @@
 # XAU/USD Paper-Trading Supervisor
 
-A Python research and simulation system that analyzes gold-market inputs, applies deterministic risk limits, and records paper trades without connecting to a live broker.
+A Python research and simulation system that analyzes gold-market inputs, applies deterministic risk limits, and records paper trades without connecting to a live broker. Yahoo Finance's `GC=F` gold-futures quote is used as a clearly labeled proxy because its `XAUUSD=X` symbol returned no history during verification.
 
 ## Python paper-trading system
 

@@ -107,10 +107,11 @@ def run_cycle(
         )
 
         LOGGER.info(
-            "Agents: macro=%s technical=%s geopolitical=%s; supervisor=%s "
+            "Agents: macro=%s technical=%s geopolitical=%s/%s; supervisor=%s "
             "(score %.2f, confidence %.0f%%)",
             macro_report.bias,
             technical_report.bias,
+            geopolitical_report.risk_level,
             geopolitical_report.bias,
             decision.decision,
             decision.score,
@@ -216,7 +217,8 @@ def main() -> int:
 
     executor = PaperExecutionEngine(settings)
     LOGGER.info(
-        "Started XAU/USD paper mode only; interval=%d minutes, database=%s",
+        "Started paper mode only for Yahoo %s; interval=%d minutes, database=%s",
+        settings.yahoo_ticker,
         settings.interval_minutes,
         settings.database_path,
     )

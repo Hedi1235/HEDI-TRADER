@@ -23,6 +23,7 @@ __pycache__/
 trading_bot.db
 trading_bot.db-shm
 trading_bot.db-wal
+trading_bot.log
 
 # IDEs and editors
 /.idea

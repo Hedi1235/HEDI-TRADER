@@ -1,0 +1,41 @@
+# Role & Objective
+Refactor and upgrade our existing Python gold trading system. Replace the purely internal SQLite paper simulator with a live-ready execution module that connects directly to MetaTrader 5 (MT5) via the official `MetaTrader5` Python package. 
+
+Maintain our existing multi-agent structure (Macro, Technical, Sentiment, and Head Trader supervisor) and deterministic risk management guardrails, but wire the final output to execute trades via a local MT5 demo terminal.
+
+---
+
+## Required Code Modifications & New Modules
+
+### 1. Update `config.py`
+Add explicit configuration variables for MetaTrader 5 login credentials:
+- `MT5_LOGIN` (integer account ID)
+- `MT5_PASSWORD` (string password)
+- `MT5_SERVER` (broker demo server name, e.g., "MetaQuotes-Demo")
+- `TRADING_SYMBOL` (set to `"XAUUSD"` or broker-specific gold symbol format)
+
+### 2. Create `execution_mt5.py` (Broker Bridge)
+Write a robust MT5 connection and execution module using the `MetaTrader5` library:
+- **Connection Manager:** Initialize connection safely with `mt5.initialize()`, passing login credentials and handling error codes if the desktop app is closed. Include an auto-reconnect heartbeat check.
+- **Pre-Trade Validation:** Check account margin levels, ensure live connection stability, and verify that the trading symbol is visible in the Market Watch (`mt5.symbol_select()`).
+- **Order Placement Function (`send_mt5_order`):** When the Head Trader and Risk Manager approve a trade, construct the MT5 order payload dictionary:
+  - Action: `mt5.TRADE_ACTION_DEAL`
+  - Type: `mt5.ORDER_TYPE_BUY` or `mt5.ORDER_TYPE_SELL`
+  - Volume: Sized dynamically based on our 1% risk rule
+  - Price: Current market Bid/Ask
+  - Stop-Loss (SL) and Take-Profit (TP): Explicitly attached to the order request
+  - Deviation: Slippage control parameter (e.g., 20 points)
+- **Execution Response Handling:** Check `result.retcode == mt5.TRADE_RETCODE_DONE` and log execution timestamps, ticket IDs, and fill prices.
+
+### 3. Update `risk_manager.py`
+Integrate the live account check:
+- Fetch live account equity and balance directly from MT5 (`mt5.account_info()`) to compute the precise 1% risk position sizing.
+- Verify open positions dynamically using `mt5.positions_get(symbol="XAUUSD")` to enforce our strict one-position limit.
+
+### 4. Update `main.py` (The 15-Minute Loop)
+Wire the updated sequence:
+1. Pull live macro data (FRED) and live price bars (either via MT5 `mt5.copy_rates_from_pos()` or Yahoo Finance proxy).
+2. Run Specialist Agents & Head Trader synthesis.
+3. Run Risk Manager validation.
+4. If approved, call `execution_mt5.py` to place the order live on the open MetaTrader 5 demo terminal.
+5. Log all states clearly to the console with colorized print statements.

@@ -8,7 +8,7 @@ from unittest.mock import patch
 from gold_trader.config import Settings
 from gold_trader.data_feeds import MarketSnapshot, PriceBar
 from gold_trader.execution import PaperExecutionEngine
-from gold_trader.main import run_cycle
+from gold_trader.main import LOGGER, configure_logging, run_cycle
 
 
 class MainLoopTests(unittest.TestCase):
@@ -49,6 +49,19 @@ class MainLoopTests(unittest.TestCase):
         self.assertIn("FRED_API_KEY", result["reason"])
         self.assertEqual(self.engine.account_summary().open_positions, 0)
         self.assertEqual(self.engine.recent_events()[0]["event_type"], "HOLD")
+
+    def test_configure_logging_persists_to_file(self) -> None:
+        log_path = Path(self.temp_dir.name) / "logs" / "trading_bot.log"
+        configure_logging(log_path)
+        try:
+            LOGGER.warning("persistent log test")
+            for handler in LOGGER.handlers:
+                handler.flush()
+            self.assertIn("persistent log test", log_path.read_text(encoding="utf-8"))
+        finally:
+            for handler in LOGGER.handlers[:]:
+                LOGGER.removeHandler(handler)
+                handler.close()
 
 
 if __name__ == "__main__":

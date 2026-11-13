@@ -1,10 +1,12 @@
-"""Environment-backed settings shared by the paper and local MT5 demo runners."""
+"""Environment-backed settings shared by paper and local MT5 runners."""
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 
@@ -39,9 +41,18 @@ def _optional_int_env(name: str) -> int | None:
     return _int_env(name, 0)
 
 
+def _mt5_account_mode_env() -> Literal["demo", "any"]:
+    value = os.getenv("MT5_ACCOUNT_MODE", "demo").strip().lower()
+    if value == "demo":
+        return "demo"
+    if value == "any":
+        return "any"
+    raise ValueError("MT5_ACCOUNT_MODE must be either 'demo' or 'any'")
+
+
 @dataclass(frozen=True)
 class Settings:
-    """Validated settings. MT5 credentials are used only by the Windows demo runner."""
+    """Validated settings. MT5 credentials are optional for an already logged-in terminal."""
 
     fred_api_key: str | None = None
     yahoo_ticker: str = "GC=F"
@@ -69,18 +80,32 @@ class Settings:
     mt5_login: int | None = None
     mt5_password: str | None = None
     mt5_server: str | None = None
+    mt5_account_mode: Literal["demo", "any"] = "demo"
     mt5_terminal_path: Path | None = None
     trading_symbol: str = "XAUUSD"
     mt5_deviation_points: int = 20
     minimum_margin_level_pct: float = 200.0
     maximum_free_margin_usage_pct: float = 0.80
-    mt5_database_path: Path = Path("mt5_demo_trades.db")
+    mt5_database_path: Path = Path("trading_bot.db")
 
     def __post_init__(self) -> None:
         if not 0 < self.max_risk_per_trade_pct <= 0.01:
             raise ValueError("MAX_RISK_PER_TRADE_PCT must be greater than 0 and no more than 0.01")
         if not 0 < self.max_daily_drawdown_pct <= 0.03:
             raise ValueError("MAX_DAILY_DRAWDOWN_PCT must be greater than 0 and no more than 0.03")
+        if not all(
+            math.isfinite(value)
+            for value in (
+                self.default_stop_loss_usd,
+                self.default_take_profit_usd,
+                self.contract_size_ounces,
+                self.initial_paper_equity,
+                self.minimum_lot,
+                self.lot_step,
+                self.maximum_lots,
+            )
+        ):
+            raise ValueError("Price, contract, equity, and lot settings must be finite")
         if self.default_stop_loss_usd <= 0 or self.default_take_profit_usd <= 0:
             raise ValueError("Stop-loss and take-profit distances must be positive")
         if self.contract_size_ounces <= 0 or self.initial_paper_equity <= 0:
@@ -101,21 +126,30 @@ class Settings:
             raise ValueError("MAX_OPEN_POSITIONS must be at least 1")
         if self.mt5_deviation_points <= 0:
             raise ValueError("MT5_DEVIATION_POINTS must be positive")
-        if self.minimum_margin_level_pct < 0:
+        if (
+            not math.isfinite(self.minimum_margin_level_pct)
+            or self.minimum_margin_level_pct < 0
+        ):
             raise ValueError("MINIMUM_MARGIN_LEVEL_PCT cannot be negative")
-        if not 0 < self.maximum_free_margin_usage_pct <= 1:
+        if (
+            not math.isfinite(self.maximum_free_margin_usage_pct)
+            or not 0 < self.maximum_free_margin_usage_pct <= 1
+        ):
             raise ValueError("MAXIMUM_FREE_MARGIN_USAGE_PCT must be in the interval (0, 1]")
-        supplied_mt5_credentials = (
-            self.mt5_login is not None,
-            bool(self.mt5_password),
-            bool(self.mt5_server),
+        supplied_mt5_credentials = any(
+            (self.mt5_login is not None, bool(self.mt5_password), bool(self.mt5_server))
         )
-        if any(supplied_mt5_credentials) and not all(supplied_mt5_credentials):
+        complete_mt5_credentials = all(
+            (self.mt5_login is not None, bool(self.mt5_password), bool(self.mt5_server))
+        )
+        if supplied_mt5_credentials and not complete_mt5_credentials:
             raise ValueError("MT5_LOGIN, MT5_PASSWORD, and MT5_SERVER must be supplied together")
         if self.mt5_login is not None and self.mt5_login <= 0:
             raise ValueError("MT5_LOGIN must be a positive account number")
         if not self.trading_symbol.strip():
             raise ValueError("TRADING_SYMBOL cannot be empty")
+        if self.mt5_account_mode not in ("demo", "any"):
+            raise ValueError("MT5_ACCOUNT_MODE must be either 'demo' or 'any'")
 
     @property
     def mt5_credentials_configured(self) -> bool:
@@ -152,6 +186,7 @@ class Settings:
             mt5_login=_optional_int_env("MT5_LOGIN"),
             mt5_password=os.getenv("MT5_PASSWORD") or None,
             mt5_server=os.getenv("MT5_SERVER") or None,
+            mt5_account_mode=_mt5_account_mode_env(),
             mt5_terminal_path=(
                 Path(os.environ["MT5_TERMINAL_PATH"])
                 if os.getenv("MT5_TERMINAL_PATH")
@@ -161,5 +196,8 @@ class Settings:
             mt5_deviation_points=_int_env("MT5_DEVIATION_POINTS", 20),
             minimum_margin_level_pct=_float_env("MINIMUM_MARGIN_LEVEL_PCT", 200.0),
             maximum_free_margin_usage_pct=_float_env("MAXIMUM_FREE_MARGIN_USAGE_PCT", 0.80),
-            mt5_database_path=Path(os.getenv("MT5_DATABASE_PATH", "mt5_demo_trades.db")),
+            mt5_database_path=Path(
+                os.getenv("MT5_DATABASE_PATH")
+                or os.getenv("DATABASE_PATH", "trading_bot.db")
+            ),
         )

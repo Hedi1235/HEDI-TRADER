@@ -1,0 +1,11 @@
+pyproject.toml
+src/xau_usd_paper_trader.egg-info/PKG-INFO
+src/xau_usd_paper_trader.egg-info/SOURCES.txt
+src/xau_usd_paper_trader.egg-info/dependency_links.txt
+src/xau_usd_paper_trader.egg-info/requires.txt
+src/xau_usd_paper_trader.egg-info/top_level.txt
+tests/test_agents.py
+tests/test_execution.py
+tests/test_execution_mt5.py
+tests/test_main.py
+tests/test_risk_manager.py

@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: xau-usd-paper-trader
+Version: 0.1.0
+Summary: Deterministic XAU/USD research and SQLite paper-trading system
+Requires-Python: >=3.11
+Requires-Dist: pydantic>=2.14.3
+Requires-Dist: python-dotenv>=1.2.4
+Requires-Dist: requests>=2.34.2
+Requires-Dist: yfinance>=1.8.0
+Provides-Extra: mt5
+Requires-Dist: metatrader5>=5.0.6231; sys_platform == "win32" and extra == "mt5"

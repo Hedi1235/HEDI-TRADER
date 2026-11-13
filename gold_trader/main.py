@@ -7,6 +7,8 @@ import logging
 import sys
 import time
 from dataclasses import replace
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Any
 
 from gold_trader.agents import (
@@ -46,16 +48,32 @@ class ColorFormatter(logging.Formatter):
         return f"{color}{rendered}{self.reset}" if color else rendered
 
 
-def configure_logging() -> None:
-    handler = logging.StreamHandler()
-    handler.setFormatter(
+def configure_logging(log_path: Path = Path("trading_bot.log")) -> None:
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(
         ColorFormatter(
             fmt="%(asctime)s | %(levelname)-8s | %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S UTC",
         )
     )
-    LOGGER.handlers.clear()
-    LOGGER.addHandler(handler)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    file_handler = RotatingFileHandler(
+        log_path,
+        maxBytes=5 * 1024 * 1024,
+        backupCount=5,
+        encoding="utf-8",
+    )
+    file_formatter = logging.Formatter(
+        fmt="%(asctime)s | %(levelname)-8s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S UTC",
+    )
+    file_formatter.converter = time.gmtime
+    file_handler.setFormatter(file_formatter)
+    for existing_handler in LOGGER.handlers[:]:
+        LOGGER.removeHandler(existing_handler)
+        existing_handler.close()
+    LOGGER.addHandler(console_handler)
+    LOGGER.addHandler(file_handler)
     LOGGER.setLevel(logging.INFO)
     LOGGER.propagate = False
 
@@ -107,12 +125,19 @@ def run_cycle(
         )
 
         LOGGER.info(
-            "Agents: macro=%s technical=%s geopolitical=%s/%s; supervisor=%s "
+            "Agents: macro=%s (%.2f/%.0f%%) technical=%s (%.2f/%.0f%%) "
+            "geopolitical=%s/%s (%.2f/%.0f%%); supervisor=%s "
             "(score %.2f, confidence %.0f%%)",
             macro_report.bias,
+            macro_report.score,
+            macro_report.confidence * 100,
             technical_report.bias,
+            technical_report.score,
+            technical_report.confidence * 100,
             geopolitical_report.risk_level,
             geopolitical_report.bias,
+            geopolitical_report.score,
+            geopolitical_report.confidence * 100,
             decision.decision,
             decision.score,
             decision.confidence * 100,
@@ -125,8 +150,14 @@ def run_cycle(
                 "confidence": decision.confidence,
                 "rationale": decision.rationale,
                 "macro_bias": macro_report.bias,
+                "macro_score": macro_report.score,
+                "macro_confidence": macro_report.confidence,
                 "technical_bias": technical_report.bias,
+                "technical_score": technical_report.score,
+                "technical_confidence": technical_report.confidence,
                 "geopolitical_bias": geopolitical_report.bias,
+                "geopolitical_score": geopolitical_report.score,
+                "geopolitical_confidence": geopolitical_report.confidence,
                 "market_timestamp": market.latest_bar.timestamp.isoformat(),
             },
         )
@@ -231,7 +262,10 @@ def main() -> int:
 
     while True:
         started = time.monotonic()
-        run_cycle(settings, executor)
+        try:
+            run_cycle(settings, executor)
+        except Exception:
+            LOGGER.exception("Analysis cycle escaped its error boundary; waiting for next cycle")
         remaining = max(0.0, settings.interval_minutes * 60 - (time.monotonic() - started))
         try:
             time.sleep(remaining)

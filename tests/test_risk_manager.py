@@ -103,6 +103,30 @@ class RiskManagerTests(unittest.TestCase):
         self.assertFalse(result.approved)
         self.assertIsNone(result.trade)
 
+    def test_uses_broker_stop_loss_estimate_in_account_currency(self) -> None:
+        result = self.manager.validate(
+            buy_decision(),
+            equity=10_000.0,
+            daily_start_equity=10_000.0,
+            open_positions=0,
+            risk_per_lot=500.0,
+        )
+        self.assertTrue(result.approved)
+        self.assertIsNotNone(result.trade)
+        assert result.trade is not None
+        self.assertAlmostEqual(result.trade.lots, 0.2)
+        self.assertAlmostEqual(result.trade.risk_amount, 100.0)
+
+    def test_rejects_non_finite_equity(self) -> None:
+        result = self.manager.validate(
+            buy_decision(),
+            equity=float("nan"),
+            daily_start_equity=10_000.0,
+            open_positions=0,
+        )
+        self.assertFalse(result.approved)
+        self.assertIsNone(result.trade)
+
 
 if __name__ == "__main__":
     unittest.main()

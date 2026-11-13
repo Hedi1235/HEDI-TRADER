@@ -214,7 +214,7 @@ def market_snapshot_from_frame(
     age = datetime.now(UTC) - observed_at
     if age > timedelta(minutes=settings.market_max_age_minutes):
         raise DataUnavailable(f"Latest market candle is stale ({int(age.total_seconds() // 60)} minutes old)")
-    if age < timedelta(minutes=-5):
+    if age < timedelta(hours=-24):
         raise DataUnavailable("Latest market candle timestamp is unexpectedly in the future")
 
     close = frame["Close"].astype(float)
